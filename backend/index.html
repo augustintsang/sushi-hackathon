@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Auction Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="auction-container">
+        <h1>Live Auction Platform</h1>
+        
+        <div id="create-auction-section">
+            <form id="auction-form">
+                <h2>Create Auction</h2>
+                <label for="auction-name">Auction Name:</label>
+                <input type="text" id="auction-name" name="auction-name" required>
+
+                <label for="auction-description">Description:</label>
+                <textarea id="auction-description" name="auction-description" required></textarea>
+
+                <label for="starting-price">Starting Price:</label>
+                <input type="number" id="starting-price" name="starting-price" min="0" step="0.01" required>
+
+                <button type="submit">Create Auction</button>
+            </form>
+        </div>
+
+        <div id="place-bid-section">
+            <form id="bid-form">
+                <h2>Place a Bid</h2>
+                <label for="auction-id">Auction ID:</label>
+                <input type="text" id="auction-id" name="auction-id" required>
+
+                <label for="bid-amount">Bid Amount:</label>
+                <input type="number" id="bid-amount" name="bid-amount" min="0" step="0.01" required>
+
+                <button type="submit">Place Bid</button>
+            </form>
+        </div>
+    </div>
+    <!-- Include Supabase from CDN -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        
+        const supabaseUrl = 'https://pxhhwxejxfoisagevnzm.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4aGh3eGVqeGZvaXNhZ2V2bnptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzAwNzI2OTAsImV4cCI6MjA0NTY0ODY5MH0.pB8oq6Y5bNHjyz1QV7vHuhTjnGCvi2K-RKkbsr6a9h0';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Function to create a new auction
+        async function createAuction(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            const name = document.getElementById('auction-name').value;
+            const description = document.getElementById('auction-description').value;
+            const startingPrice = parseFloat(document.getElementById('starting-price').value);
+
+            // Use a placeholder seller_id for testing
+            const placeholderSellerId = '00000000-0000-0000-0000-000000000000';
+
+            // Insert auction details into the auctions table
+            const { data, error } = await supabase
+                .from('auctions')
+                .insert([{
+                    title: name,
+                    description: description,
+                    seller_id: placeholderSellerId, // Use placeholder ID
+                    starting_price: startingPrice,
+                    current_price: startingPrice,
+                    start_time: new Date().toISOString(),
+                    end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+                }]);
+
+            if (error) {
+                console.error('Error creating auction:', error);
+                alert('Failed to create auction.');
+            } else {
+                alert('Auction created successfully!');
+                document.getElementById('auction-form').reset(); // Reset the form
+            }
+        }
+
+        // Function to place a bid
+        async function placeBid(event) {
+            event.preventDefault();
+
+            const auctionId = document.getElementById('auction-id').value;
+            const bidAmount = parseFloat(document.getElementById('bid-amount').value);
+
+            if (!auctionId) {
+                alert('Please enter a valid auction ID.');
+                return;
+            }
+
+            const { data, error } = await supabase.rpc('validate_and_update_bid', {
+                auction_id: auctionId,
+                bid_amount: bidAmount,
+                bidder_id: '00000000-0000-0000-0000-000000000000'
+            });
+
+            if (error) {
+                console.error('Error placing bid:', error);
+                alert('Failed to place bid.');
+            } else if (!data) {
+                alert('Bid must be higher than the current price.');
+            } else {
+                alert('Bid placed successfully!');
+                document.getElementById('bid-form').reset();
+            }
+        }
+
+        // Attach event listener to the auction form
+        document.getElementById('auction-form').addEventListener('submit', createAuction);
+
+        // Attach event listener to the bid form
+        document.getElementById('bid-form').addEventListener('submit', placeBid);
+    </script>
+</body>
+</html>
